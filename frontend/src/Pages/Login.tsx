@@ -1,5 +1,10 @@
 import React, { useState } from "react";
-import '../assets/Login.css';
+import { Button } from "../Components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../Components/ui/card";
+import { Input } from "../Components/ui/input";
+import { Label } from "../Components/ui/label";
+import { Alert, AlertDescription } from "../Components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 export default function Login() {
     const [email, setEmail] = useState("");
@@ -7,7 +12,6 @@ export default function Login() {
     const [error, setError] = useState("");
 
     const handleSubmit = (e: React.FormEvent) => {
-        // Add logic to handle log in
         e.preventDefault();
         setError("");
         
@@ -20,36 +24,50 @@ export default function Login() {
     };
 
     return (
-        <div className="login-container">
-            
-            <form onSubmit={handleSubmit} className="login-form">
-                <h2>Login</h2>
-                <div >
-                    <label htmlFor="email" className="login-label">Email:</label>
-                    <input
-                        id="email"
-                        type="email"
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        className="login-input"
-                        required
-                    />
-                </div>
-                <div >
-                    <label htmlFor="password" className="login-label">Password:</label>
-                    <input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        className="login-input"
-                        required
-                    />
-                </div>
-                {error && <div style={{ color: "red", marginBottom: 16 }}>{error}</div>}
-                <button type="submit" className="login-button">Login</button>
-            </form>
+        <div className="min-h-screen flex items-center justify-center bg-background p-4">
+            <Card className="w-full max-w-md">
+                <CardHeader className="space-y-1">
+                    <CardTitle className="text-2xl font-bold text-center">Login</CardTitle>
+                    <CardDescription className="text-center">
+                        Enter your credentials to access your account
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input
+                                id="email"
+                                type="email"
+                                value={email}
+                                onChange={e => setEmail(e.target.value)}
+                                placeholder="Enter your email"
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="password">Password</Label>
+                            <Input
+                                id="password"
+                                type="password"
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
+                                placeholder="Enter your password"
+                                required
+                            />
+                        </div>
+                        {error && (
+                            <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
+                        )}
+                        <Button type="submit" className="w-full">
+                            Login
+                        </Button>
+                    </form>
+                </CardContent>
+            </Card>
         </div>
     );
-};
-
+}
