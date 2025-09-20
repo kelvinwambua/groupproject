@@ -1,0 +1,41 @@
+/* src/assets/css/navbar.css */
+.navbar {
+  display: flex;
+  justify-content: space-between; /* logo left, links right */
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: #1b2021;
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+/* Logo */
+.navbar-logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #646cff;
+  text-decoration: none;
+}
+
+/* Links Container */
+.navbar-links {
+  list-style: none;
+  display: flex;
+  gap: 1.5rem; /* space between links */
+  margin: 0;
+  padding: 0;
+}
+
+/* Individual Links */
+.navbar-links a {
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.navbar-links a:hover {
+  color: #646cff;
+}

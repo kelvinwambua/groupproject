@@ -1,0 +1,36 @@
+/* src/assets/css/about.css */
+.about {
+  max-width: 800px;
+  margin: 3rem auto;
+  padding: 2rem;
+  line-height: 1.6;
+  background: #1e1c1c;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.about h1 {
+  text-align: center;
+  font-size: 2.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.about-section {
+  margin-top: 2rem;
+}
+
+.about-section h2 {
+  color: #f8f1f1;
+  font-size: 1.8rem;
+  margin-bottom: 0.8rem;
+}
+
+.about-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.about-section li {
+  margin: 0.5rem 0;
+  font-size: 1.1rem;
+}
