@@ -7,15 +7,15 @@ export default function Login() {
     const [error, setError] = useState("");
 
     const handleSubmit = (e: React.FormEvent) => {
+        // Add logic to handle log in
         e.preventDefault();
         setError("");
-        // Replace with your authentication logic
+        
         if (!email || !password) {
             setError("Please enter both email and password.");
             return;
         }
-        // Example: call API here
-        // login(email, password).catch(() => setError("Invalid credentials"));
+        
         alert(`Logged in as ${email}`);
     };
 
