@@ -23,9 +23,12 @@ $app->get('/api/users/{id}', function (Request $request, Response $response, $ar
     $response->getBody()->write(json_encode($user));
     return $response->withHeader('Content-Type', 'application/json');
 });
+
+
+// Test database connection
 $app->get('/api/test-db', function (Request $request, Response $response) {
     try {
-        $pdo = new PDO('mysql:host=localhost;dbname=shop', 'root', 'Jason');
+        $pdo = new PDO('mysql:host=localhost;dbname=shop', 'root', '');
         $stmt = $pdo->query('SELECT "Connection works!" as message');
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -43,7 +46,8 @@ $app->post('/api/users', function (Request $request, Response $response) {
     
     $user = User::create([
         'name' => $data['name'],
-        'email' => $data['email']
+        'email' => $data['email'],
+        'password' => password_hash($data['password'], PASSWORD_BCRYPT)
     ]);
     
     $response->getBody()->write(json_encode($user));
