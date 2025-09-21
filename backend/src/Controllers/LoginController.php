@@ -1,8 +1,8 @@
 <?php
 
-namespace backend\src\Controllers;
+namespace App\Controllers;  
 
-use backend\src\Models\User;
+use App\Models\User;
 
 class LoginController
 {

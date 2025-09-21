@@ -1,17 +1,23 @@
 <?php
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
-use App\Models\User;
-use backend\src\Controllers\LoginController;
-// Login, logout, and session check routes
+use App\Models\User;  
+use App\Controllers\LoginController;  
+
 $app->post('/api/login', function (Request $request, Response $response) {
     $data = json_decode($request->getBody(), true);
-    $email = $data['email'] ?? '';
-    $password = $data['password'] ?? '';
-    $remember = $data['remember'] ?? false;
+    
+    if (!$data['email'] || !$data['password']) {
+        $response->getBody()->write(json_encode(['success' => false, 'error' => 'Email and password are required']));
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+    }
+    
     $controller = new LoginController();
-    $user = $controller->login($email, $password, $remember);
+    $user = $controller->login($data['email'], $data['password'], $data['remember'] ?? false);
+    
     if ($user) {
+
+        unset($user->password);
         $response->getBody()->write(json_encode(['success' => true, 'user' => $user]));
         return $response->withHeader('Content-Type', 'application/json');
     } else {

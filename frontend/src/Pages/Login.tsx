@@ -27,12 +27,12 @@ export default function Login() {
         }
 
         try {
-            const res = await fetch("/api/login", {
+            const res = await fetch("http://localhost:8000/api/login", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                credentials: "include",
+                // credentials: "include",
                 body: JSON.stringify({ email, password, remember: rememberMe }),
             });
             const data = await res.json();
