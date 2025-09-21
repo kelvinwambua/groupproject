@@ -3,6 +3,7 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use App\Models\User;  
 use App\Controllers\LoginController;  
+use App\Controllers\SignupController;
 
 $app->options('/api/login', function (Request $request, Response $response) {
     return $response;
@@ -116,27 +117,34 @@ $app->get('/api/test-db', function (Request $request, Response $response) {
     }
 });
 
+
+// Signup route
 $app->post('/api/users', function (Request $request, Response $response) {
     $data = json_decode($request->getBody(), true);
-    $existingUser = User::where('email', $data['email'])->first();
-    if ($existingUser) {
+
+    
+    if (empty($data['name']) || empty($data['email']) || empty($data['password'])) {
         $response->getBody()->write(json_encode([
-            'error' => 'A user with this email already exists.'
+            'error' => 'Name, email, and password are required.'
         ]));
-        return $response
-            ->withStatus(409) 
-            ->withHeader('Content-Type', 'application/json');
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
     }
+
+    // Call the SignupController
+    $controller = new SignupController();
+    $result = $controller->register($data['name'], $data['email'], $data['password']);
+
+    // If there’s an error (like duplicate email)
+    if (isset($result['error'])) {
+        $response->getBody()->write(json_encode($result));
+        return $response->withStatus(409)->withHeader('Content-Type', 'application/json');
+    }
+
     
-    $user = User::create([
-        'name' => $data['name'],
-        'email' => $data['email'],
-        'password' => password_hash($data['password'], PASSWORD_BCRYPT)
-    ]);
-    
-    $response->getBody()->write(json_encode($user));
+    $response->getBody()->write(json_encode($result));
     return $response->withStatus(201)->withHeader('Content-Type', 'application/json');
 });
+
 
 $app->put('/api/users/{id}', function (Request $request, Response $response, $args) {
     $user = User::find($args['id']);
