@@ -51,6 +51,7 @@ class ComposerStaticInit026509606a55be5c56c243e48adc6597
             'Psr\\Http\\Message\\' => 17,
             'Psr\\Container\\' => 14,
             'Psr\\Clock\\' => 10,
+            'PHPMailer\\PHPMailer\\' => 20,
         ),
         'L' => 
         array (
@@ -164,6 +165,10 @@ class ComposerStaticInit026509606a55be5c56c243e48adc6597
         'Psr\\Clock\\' => 
         array (
             0 => __DIR__ . '/..' . '/psr/clock/src',
+        ),
+        'PHPMailer\\PHPMailer\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/phpmailer/phpmailer/src',
         ),
         'Laravel\\SerializableClosure\\' => 
         array (

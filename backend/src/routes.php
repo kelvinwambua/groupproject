@@ -4,6 +4,10 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use App\Models\User;  
 use App\Controllers\LoginController;  
 
+$app->options('/api/login', function (Request $request, Response $response) {
+    return $response;
+});
+
 $app->post('/api/login', function (Request $request, Response $response) {
     $data = json_decode($request->getBody(), true);
     
@@ -13,23 +17,58 @@ $app->post('/api/login', function (Request $request, Response $response) {
     }
     
     $controller = new LoginController();
-    $user = $controller->login($data['email'], $data['password'], $data['remember'] ?? false);
+    $result = $controller->login($data['email'], $data['password']);
     
-    if ($user) {
+    $response->getBody()->write(json_encode($result));
+    return $response->withStatus($result['success'] ? 200 : 401)->withHeader('Content-Type', 'application/json');
+});
 
-        unset($user->password);
-        $response->getBody()->write(json_encode(['success' => true, 'user' => $user]));
-        return $response->withHeader('Content-Type', 'application/json');
-    } else {
-        $response->getBody()->write(json_encode(['success' => false, 'error' => 'Invalid credentials']));
-        return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
+$app->options('/api/verify-2fa', function (Request $request, Response $response) {
+    return $response;
+});
+
+$app->post('/api/verify-2fa', function (Request $request, Response $response) {
+    $data = json_decode($request->getBody(), true);
+    
+    if (!$data['email'] || !$data['code']) {
+        $response->getBody()->write(json_encode(['success' => false, 'error' => 'Email and 2FA code are required']));
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
     }
+    
+    $controller = new LoginController();
+    $result = $controller->verify2FA($data['email'], $data['code']);
+    
+    $response->getBody()->write(json_encode($result));
+    return $response->withStatus($result['success'] ? 200 : 401)->withHeader('Content-Type', 'application/json');
+});
+
+$app->options('/api/resend-2fa', function (Request $request, Response $response) {
+    return $response;
+});
+
+$app->post('/api/resend-2fa', function (Request $request, Response $response) {
+    $data = json_decode($request->getBody(), true);
+    
+    if (!$data['email']) {
+        $response->getBody()->write(json_encode(['success' => false, 'error' => 'Email is required']));
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+    }
+    
+    $controller = new LoginController();
+    $result = $controller->resend2FACode($data['email']);
+    
+    $response->getBody()->write(json_encode($result));
+    return $response->withStatus($result['success'] ? 200 : 400)->withHeader('Content-Type', 'application/json');
+});
+
+$app->options('/api/logout', function (Request $request, Response $response) {
+    return $response;
 });
 
 $app->post('/api/logout', function (Request $request, Response $response) {
     $controller = new LoginController();
-    $controller->logout();
-    $response->getBody()->write(json_encode(['success' => true]));
+    $result = $controller->logout();
+    $response->getBody()->write(json_encode($result));
     return $response->withHeader('Content-Type', 'application/json');
 });
 
@@ -44,7 +83,6 @@ $app->get('/api/session', function (Request $request, Response $response) {
     return $response->withHeader('Content-Type', 'application/json');
 });
 
-// Get all users
 $app->get('/api/users', function (Request $request, Response $response) {
     $users = User::all();
     
@@ -52,7 +90,6 @@ $app->get('/api/users', function (Request $request, Response $response) {
     return $response->withHeader('Content-Type', 'application/json');
 });
 
-// Get single user
 $app->get('/api/users/{id}', function (Request $request, Response $response, $args) {
     $user = User::find($args['id']);
     
@@ -65,8 +102,6 @@ $app->get('/api/users/{id}', function (Request $request, Response $response, $ar
     return $response->withHeader('Content-Type', 'application/json');
 });
 
-
-// Test database connection
 $app->get('/api/test-db', function (Request $request, Response $response) {
     try {
         $pdo = new PDO('mysql:host=localhost;dbname=shop', 'root', '');
@@ -81,10 +116,8 @@ $app->get('/api/test-db', function (Request $request, Response $response) {
     }
 });
 
-// Create user
 $app->post('/api/users', function (Request $request, Response $response) {
     $data = json_decode($request->getBody(), true);
-    // Check if email already exists
     $existingUser = User::where('email', $data['email'])->first();
     if ($existingUser) {
         $response->getBody()->write(json_encode([
@@ -105,7 +138,6 @@ $app->post('/api/users', function (Request $request, Response $response) {
     return $response->withStatus(201)->withHeader('Content-Type', 'application/json');
 });
 
-// Update user
 $app->put('/api/users/{id}', function (Request $request, Response $response, $args) {
     $user = User::find($args['id']);
     
@@ -121,7 +153,6 @@ $app->put('/api/users/{id}', function (Request $request, Response $response, $ar
     return $response->withHeader('Content-Type', 'application/json');
 });
 
-// Delete user
 $app->delete('/api/users/{id}', function (Request $request, Response $response, $args) {
     $user = User::find($args['id']);
     
