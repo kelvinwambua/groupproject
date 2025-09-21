@@ -1,4 +1,3 @@
-import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../Components/ui/card";
 import { Badge } from "../Components/ui/badge";
 import { CheckCircle, Heart, Shield, Truck, DollarSign } from "lucide-react";

@@ -87,7 +87,7 @@ const Signup: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8000/api/signup", {
+      const response = await fetch("http://localhost:8000/api/users", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -100,10 +100,10 @@ const Signup: React.FC = () => {
       });
 
       const data: ApiResponse = await response.json();
-
+      
       if (!response.ok) {
         const errorData = data as ApiError;
-        throw new Error(errorData.message || "Signup failed");
+        throw new Error(errorData.error || "Signup failed");
       }
 
       setSuccess(true);

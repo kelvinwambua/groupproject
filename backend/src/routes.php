@@ -43,6 +43,16 @@ $app->get('/api/test-db', function (Request $request, Response $response) {
 // Create user
 $app->post('/api/users', function (Request $request, Response $response) {
     $data = json_decode($request->getBody(), true);
+    // Check if email already exists
+    $existingUser = User::where('email', $data['email'])->first();
+    if ($existingUser) {
+        $response->getBody()->write(json_encode([
+            'error' => 'A user with this email already exists.'
+        ]));
+        return $response
+            ->withStatus(409) 
+            ->withHeader('Content-Type', 'application/json');
+    }
     
     $user = User::create([
         'name' => $data['name'],
