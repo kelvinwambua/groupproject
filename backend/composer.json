@@ -4,7 +4,8 @@
         "slim/psr7": "^1.7",
         "slim/http": "^1.4",
         "illuminate/database": "^12.30",
-        "illuminate/events": "^12.30"
+        "illuminate/events": "^12.30",
+        "phpmailer/phpmailer": "^6.10"
     },
     "autoload": {
         "psr-4": {

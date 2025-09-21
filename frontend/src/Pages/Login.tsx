@@ -26,17 +26,37 @@ export default function Login() {
             return;
         }
 
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            const res = await fetch("http://localhost:8000/api/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify({ email, password, remember: rememberMe }),
+            });
+            const data = await res.json();
+            
+            if (res.ok && data.success) {
+                if (data.requires_2fa) {
+                    localStorage.setItem('verify_email', email);
+                    window.location.href = "/verify-2fa";
+                } else {
+                    window.location.href = "/";
+                }
+            } else {
+                setError(data.error || "Login failed");
+                setIsLoading(false);
+            }
+        } catch (err) {
+            setError("Network error. Please try again.");
             setIsLoading(false);
-            alert(`Logged in as ${email}`);
-        }, 2000);
+        }
     };
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
             <div className="w-full max-w-md space-y-6">
-
                 <div className="text-center space-y-2">
                     <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
                     <p className="text-muted-foreground">Sign in to your account to continue</p>
@@ -140,7 +160,6 @@ export default function Login() {
                     </CardContent>
                 </Card>
 
-  
                 <div className="text-center text-xs text-muted-foreground">
                     By continuing, you agree to our{" "}
                     <Button variant="link" className="px-0 font-normal h-auto text-xs">
