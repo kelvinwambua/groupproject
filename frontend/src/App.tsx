@@ -5,6 +5,7 @@ import SignUp from "./Pages/SignUp";
 import Login from "./Pages/Login"; 
 import Home from "./Pages/Home";
 import About from "./Pages/About";
+import Verify2FA from "./Pages/Verift2FA";
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/signup" element={<SignUp/>} />
+            <Route path="/verify-2fa" element={<Verify2FA />} />
             <Route path="/login" element={<Login/>} />
             <Route path="/about" element={<About/>} />
           </Routes>
