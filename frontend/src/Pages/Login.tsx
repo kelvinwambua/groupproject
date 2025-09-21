@@ -26,11 +26,28 @@ export default function Login() {
             return;
         }
 
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            const res = await fetch("/api/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify({ email, password, remember: rememberMe }),
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                // You can redirect or update app state here
+                setIsLoading(false);
+                window.location.href = "/"; // Redirect to home or dashboard
+            } else {
+                setError(data.error || "Login failed");
+                setIsLoading(false);
+            }
+        } catch (err) {
+            setError("Network error. Please try again.");
             setIsLoading(false);
-            alert(`Logged in as ${email}`);
-        }, 2000);
+        }
     };
 
     return (

@@ -2,6 +2,41 @@
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use App\Models\User;
+use backend\src\Controllers\LoginController;
+// Login, logout, and session check routes
+$app->post('/api/login', function (Request $request, Response $response) {
+    $data = json_decode($request->getBody(), true);
+    $email = $data['email'] ?? '';
+    $password = $data['password'] ?? '';
+    $remember = $data['remember'] ?? false;
+    $controller = new LoginController();
+    $user = $controller->login($email, $password, $remember);
+    if ($user) {
+        $response->getBody()->write(json_encode(['success' => true, 'user' => $user]));
+        return $response->withHeader('Content-Type', 'application/json');
+    } else {
+        $response->getBody()->write(json_encode(['success' => false, 'error' => 'Invalid credentials']));
+        return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
+    }
+});
+
+$app->post('/api/logout', function (Request $request, Response $response) {
+    $controller = new LoginController();
+    $controller->logout();
+    $response->getBody()->write(json_encode(['success' => true]));
+    return $response->withHeader('Content-Type', 'application/json');
+});
+
+$app->get('/api/session', function (Request $request, Response $response) {
+    $controller = new LoginController();
+    $user = $controller->check();
+    if ($user) {
+        $response->getBody()->write(json_encode(['loggedIn' => true, 'user' => $user]));
+    } else {
+        $response->getBody()->write(json_encode(['loggedIn' => false]));
+    }
+    return $response->withHeader('Content-Type', 'application/json');
+});
 
 // Get all users
 $app->get('/api/users', function (Request $request, Response $response) {
