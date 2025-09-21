@@ -6,6 +6,7 @@ import { Label } from "../Components/ui/label";
 import { Alert, AlertDescription } from "../Components/ui/alert";
 import { Checkbox } from "../Components/ui/checkbox";
 import { AlertCircle, CheckCircle, Loader2, Eye, EyeOff, Mail, Lock, User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface FormData {
   name: string;
@@ -14,15 +15,16 @@ interface FormData {
   confirmPassword: string;
 }
 
-interface ApiError {
-  message: string;
-  errors?: Record<string, string[]>;
-}
-
 interface ApiResponse {
-  success: boolean;
-  message: string;
-  data?: any;
+  success?: boolean;
+  requires_2fa?: boolean;
+  access_token?: string;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  error?: string;
 }
 
 const Signup: React.FC = () => {
@@ -40,10 +42,11 @@ const Signup: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const [agreedToTerms, setAgreedToTerms] = useState<boolean>(false);
 
+  const navigate = useNavigate();
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
     if (error) setError(null);
   };
 
@@ -52,27 +55,22 @@ const Signup: React.FC = () => {
       setError("Name is required");
       return false;
     }
-    
     if (!formData.email.trim()) {
       setError("Email is required");
       return false;
     }
-
     if (formData.password.length < 8) {
       setError("Password must be at least 8 characters long");
       return false;
     }
-
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
       return false;
     }
-
     if (!agreedToTerms) {
       setError("You must agree to the terms and conditions");
       return false;
     }
-
     return true;
   };
 
@@ -80,9 +78,7 @@ const Signup: React.FC = () => {
     e.preventDefault();
     setError(null);
 
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setLoading(true);
 
@@ -100,15 +96,26 @@ const Signup: React.FC = () => {
       });
 
       const data: ApiResponse = await response.json();
-      
-      if (!response.ok) {
-        const errorData = data as ApiError;
-        throw new Error(errorData.error || "Signup failed");
+
+      if (!response.ok || data.error) {
+        throw new Error(data.error || "Signup failed");
       }
 
-      setSuccess(true);
-      setFormData({ name: "", email: "", password: "", confirmPassword: "" });
-      setAgreedToTerms(false);
+      if (data.success && data.requires_2fa) {
+        // Save email for verify-2fa page
+        localStorage.setItem("verify_email", formData.email);
+
+        setSuccess(true);
+        setFormData({ name: "", email: "", password: "", confirmPassword: "" });
+        setAgreedToTerms(false);
+
+        navigate("/verify-2fa");
+      } else if (data.access_token) {
+        
+        localStorage.setItem("access_token", data.access_token);
+        navigate("/");
+      }
+
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -123,7 +130,6 @@ const Signup: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <div className="w-full max-w-md space-y-6">
-        {/* Header */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">Create account</h1>
           <p className="text-muted-foreground">Sign up to get started with your account</p>
@@ -138,6 +144,7 @@ const Signup: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Name */}
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
                 <div className="relative">
@@ -155,6 +162,7 @@ const Signup: React.FC = () => {
                 </div>
               </div>
 
+              {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
@@ -172,6 +180,7 @@ const Signup: React.FC = () => {
                 </div>
               </div>
 
+              {/* Password */}
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
@@ -193,15 +202,12 @@ const Signup: React.FC = () => {
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
 
+              {/* Confirm Password */}
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <div className="relative">
@@ -223,15 +229,12 @@ const Signup: React.FC = () => {
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
 
+              {/* Terms */}
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="terms"
@@ -250,11 +253,13 @@ const Signup: React.FC = () => {
                 </Label>
               </div>
 
+              {/* Submit */}
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {loading ? "Creating account..." : "Create account"}
               </Button>
 
+              {/* Errors */}
               {error && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
@@ -262,10 +267,11 @@ const Signup: React.FC = () => {
                 </Alert>
               )}
 
+              {/* Success */}
               {success && (
                 <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-400">
                   <CheckCircle className="h-4 w-4" />
-                  <AlertDescription>Account created successfully!</AlertDescription>
+                  <AlertDescription>Account created successfully! Please check your email for the 2FA code.</AlertDescription>
                 </Alert>
               )}
             </form>
