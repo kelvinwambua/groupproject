@@ -13,7 +13,7 @@ class User extends Model
         'remember_token',
         'two_factor_code',
         'two_factor_expires_at',
-        'email_verified_at'
+        'email_verified_at',
     ];
 
     protected $hidden = [

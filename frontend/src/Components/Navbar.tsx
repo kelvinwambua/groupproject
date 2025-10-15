@@ -73,7 +73,7 @@ const NavBar: React.FC<NavBarProps> = ({ links = defaultLinks }) => {
       window.location.href = '/';
     }
   };
-
+  console.log(user)
   const getInitials = (email: string) => {
     return email.charAt(0).toUpperCase();
   };
@@ -122,6 +122,17 @@ const NavBar: React.FC<NavBarProps> = ({ links = defaultLinks }) => {
           {loading ? (
             <div className="w-8 h-8 animate-pulse bg-muted rounded-full"></div>
           ) : isAuthenticated && user ? (
+            <>
+            <Button >
+              <a href="/sell-item">Sell Item</a>
+            </Button>
+            {
+              user.role === 'admin' && (
+                <Button >
+                  <a href="/users">Manage Users</a>
+                </Button>
+              )
+            }
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -149,6 +160,7 @@ const NavBar: React.FC<NavBarProps> = ({ links = defaultLinks }) => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            </>
           ) : (
             authLinks.map((link, index) => (
               <Button 
@@ -160,6 +172,7 @@ const NavBar: React.FC<NavBarProps> = ({ links = defaultLinks }) => {
               >
                 <a href={link.path}>{link.name}</a>
               </Button>
+              
             ))
           )}
         </div>

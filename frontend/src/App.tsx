@@ -7,6 +7,7 @@ import Home from "./Pages/Home";
 import About from "./Pages/About";
 import Verify2FA from "./Pages/Verift2FA";
 import { Users } from "./Pages/Users";
+import SellItem from "./Pages/Sell";
 
 
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
             <Route path="/login" element={<Login/>} />
             <Route path="/about" element={<About/>} />
             <Route path="/users" element={<Users />} />
+            <Route path="/sell-item" element={<SellItem />} />
           </Routes>
         </main>
       </Router>

@@ -14,6 +14,7 @@ CREATE TABLE users (
 );
 ALTER TABLE users ADD COLUMN two_factor_code VARCHAR(6) NULL;
 ALTER TABLE users ADD COLUMN two_factor_expires_at TIMESTAMP NULL;
+ALTER TABLE users ADD COLUMN role ENUM('user', 'admin') DEFAULT 'user';
 
 CREATE TABLE email_verification_tokens (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -25,3 +26,15 @@ CREATE TABLE email_verification_tokens (
     INDEX(token),
     INDEX(user_id)
 );
+CREATE TABLE products (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    created_by INT UNSIGNED,
+    description TEXT,
+    image_url VARCHAR(255),
+    price DECIMAL(10, 2) NOT NULL,
+    stock INT UNSIGNED DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
