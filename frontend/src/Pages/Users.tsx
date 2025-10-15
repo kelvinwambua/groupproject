@@ -197,7 +197,9 @@ export function Users() {
                                   onClick={async () => {
                                     await fetch(`http://localhost:8000/api/users/${user.id}`, {
                                       method: 'DELETE',
+                                      credentials: 'include',
                                       headers: {
+                                        
                                         'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                                       }
                                     });
