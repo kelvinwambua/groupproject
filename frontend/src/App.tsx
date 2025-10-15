@@ -6,6 +6,8 @@ import Login from "./Pages/Login";
 import Home from "./Pages/Home";
 import About from "./Pages/About";
 import Verify2FA from "./Pages/Verift2FA";
+import { Users } from "./Pages/Users";
+
 
 export default function App() {
   return (
@@ -19,6 +21,7 @@ export default function App() {
             <Route path="/verify-2fa" element={<Verify2FA />} />
             <Route path="/login" element={<Login/>} />
             <Route path="/about" element={<About/>} />
+            <Route path="/users" element={<Users />} />
           </Routes>
         </main>
       </Router>
