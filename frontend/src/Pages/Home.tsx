@@ -130,9 +130,8 @@ export default function HomePage() {
                       {product.name}
                     </CardTitle>
 
-                    <p className="text-sm text-muted-foreground">
-                      Category: {categories[product.category_id]?.name || "Unknown"}
-                    </p>
+                    <p>Category: {product.category?.name || "Unknown"}</p>
+
 
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <User className="w-4 h-4" />

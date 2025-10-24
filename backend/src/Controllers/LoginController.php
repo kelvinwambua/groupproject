@@ -35,7 +35,8 @@ class LoginController
             'success' => true,
             'requires_2fa' => true,
             'message' => 'Please check your email for the 2FA verification code',
-            'email_sent' => $emailSent
+            'email_sent' => $emailSent,
+            
         ];
     }
 
@@ -69,7 +70,8 @@ class LoginController
         return [
             'success' => true,
             'access_token' => $accessToken,
-            'user' => $user->makeHidden(['password', 'two_factor_code'])
+            'user' => $user->makeHidden(['password', 'two_factor_code']),
+            'user_id' => $user->id
         ];
     }
 

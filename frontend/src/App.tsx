@@ -9,6 +9,7 @@ import Verify2FA from "./Pages/Verift2FA";
 import { Users } from "./Pages/Users";
 import SellItem from "./Pages/Sell";
 import AdminAddProduct from "./Pages/AdminAddProduct";
+import Profile from "./Pages/Profile";
 
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="/users" element={<Users />} />
             <Route path="/admin/add-product" element={<AdminAddProduct />} />
             <Route path="/sell-item" element={<SellItem />} />
+            <Route path="/profile" element={<Profile />} />
           </Routes>
         </main>
       </Router>

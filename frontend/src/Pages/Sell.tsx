@@ -80,13 +80,14 @@ export default function SellItem() {
     try {
       const token = localStorage.getItem('access_token')
       const productData = {
-        name: formData.get("name"),
-        description: formData.get("description"),
-        price: parseFloat(formData.get("price") as string),
-        stock: parseInt(formData.get("stock") as string),
-        image_url: uploadedImageUrl,
-        category_name: parseInt(category_name)
-      }
+          name: formData.get("name"),
+          description: formData.get("description"),
+          price: parseFloat(formData.get("price") as string),
+          stock: parseInt(formData.get("stock") as string),
+          image_url: uploadedImageUrl,
+          category_id: parseInt(category_id)
+        };
+
       const productRes = await fetch("http://localhost:8000/api/products", {
         method: "POST",
         headers: {
@@ -239,9 +240,10 @@ export default function SellItem() {
                 >
                   <option value="">Select a category</option>
                   {categories.map((cat) => (
-                    <option key={cat.id} value={cat.name}>{cat.name}</option>
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
                 </select>
+
               </div>
               <Button
                 type="submit"

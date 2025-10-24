@@ -51,6 +51,7 @@ export default function Verify2FA() {
             
             if (res.ok && data.success) {
                 localStorage.setItem('access_token', data.access_token);
+                localStorage.setItem('userId', data.user_id);
                 localStorage.removeItem('verify_email');
                 window.location.href = "/";
             } else {
