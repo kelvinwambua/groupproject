@@ -20,7 +20,7 @@ const defaultLinks = [
 const NavBar: React.FC<NavBarProps> = ({ links = defaultLinks }) => {
   const location = useLocation();
   const currentPath = location.pathname;
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<any | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -128,9 +128,14 @@ const NavBar: React.FC<NavBarProps> = ({ links = defaultLinks }) => {
             </Button>
             {
               user.role === 'admin' && (
+                <>
                 <Button >
                   <a href="/users">Manage Users</a>
                 </Button>
+                <Button>
+                  <a href="/admin/add-product">Add Product</a>
+                </Button>
+                </>
               )
             }
             <DropdownMenu>

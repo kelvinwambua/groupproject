@@ -9,25 +9,36 @@ export default function HomePage() {
   const [products, setProducts] = useState([]);
   const [users, setUsers] = useState({});
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState({});
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [productsRes, usersRes] = await Promise.all([
+        const [productsRes, usersRes, categoriesRes] = await Promise.all([
           fetch('http://localhost:8000/api/products'),
-          fetch('http://localhost:8000/api/users')
+          fetch('http://localhost:8000/api/users'),
+          fetch('http://localhost:8000/api/categories')
         ]);
         
         const productsData = await productsRes.json();
         const usersData = await usersRes.json();
+        const categoriesData = await categoriesRes.json();
+
         
         const usersMap = usersData.reduce((acc, user) => {
           acc[user.id] = user;
           return acc;
         }, {});
         
+        const categoriesMap = categoriesData.reduce((acc, cat) => {
+          acc[cat.id] = cat;
+          return acc;
+        }, {});
+
         setProducts(productsData);
         setUsers(usersMap);
+        setCategories(categoriesMap);
+
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -118,6 +129,11 @@ export default function HomePage() {
                     <CardTitle className="text-xl line-clamp-1 group-hover:text-primary transition-colors">
                       {product.name}
                     </CardTitle>
+
+                    <p className="text-sm text-muted-foreground">
+                      Category: {categories[product.category_id]?.name || "Unknown"}
+                    </p>
+
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <User className="w-4 h-4" />
                       <span>by {users[product.created_by]?.name || 'Unknown Seller'}</span>

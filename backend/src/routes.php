@@ -5,8 +5,40 @@ use App\Models\User;
 use App\Controllers\LoginController;  
 use App\Controllers\SignupController;
 use App\Models\Product; 
+use App\Models\Category;
 use Dompdf\Dompdf;
 use Dompdf\Options; 
+
+// Category routes
+$app->get('/api/categories', function (Request $request, Response $response) {
+    $categories = Category::all();
+    $response->getBody()->write(json_encode($categories));
+    return $response->withHeader('Content-Type', 'application/json');
+});
+
+$app->post('/api/categories', function (Request $request, Response $response) {
+    $controller = new LoginController();
+    $adminUser = $controller->check();
+    if(!$adminUser || $adminUser->role !== 'admin') {
+        $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
+        return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
+    }
+
+    $data = json_decode($request->getBody(), true);
+    if (empty($data['name'])) {
+        $response->getBody()->write(json_encode(['error' => 'Category name is required']));
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+    }
+
+    $category = Category::create([
+        'name' => $data['name'],
+        'description' => $data['description'] ?? null,
+        'slug' => strtolower(str_replace(' ', '-', $data['name']))
+    ]);
+
+    $response->getBody()->write(json_encode($category));
+    return $response->withStatus(201)->withHeader('Content-Type', 'application/json');
+});
 
 
 $app->options('/api/login', function (Request $request, Response $response) {
@@ -265,7 +297,15 @@ $app->get('/api/users/{id}', function (Request $request, Response $response, $ar
 
 $app->get('/api/test-db', function (Request $request, Response $response) {
     try {
-        $pdo = new PDO('mysql:host=localhost;dbname=shop', 'root', '');
+
+        $host = $_ENV['DB_HOST'] ?? '127.0.0.1';
+        $port = $_ENV['DB_PORT'] ?? 3307;
+        $db = $_ENV['DB_DATABASE'] ?? 'shop';
+        $user = $_ENV['DB_USERNAME'] ?? 'root';
+        $pass = $_ENV['DB_PASSWORD'] ?? '';
+
+        $dsn = "mysql:host={$host};port={$port};dbname={$db}";
+        $pdo = new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         $stmt = $pdo->query('SELECT "Connection works!" as message');
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -343,7 +383,13 @@ $app->delete('/api/users/{id}', function (Request $request, Response $response, 
     return $response->withHeader('Content-Type', 'application/json');
 });
 $app->get('/api/products', function (Request $request, Response $response) {
-    $products = Product::all();
+    $query = Product::query();
+      
+    if ($categoryname = $request->getQueryParams()['category_name'] ?? null) {
+        $query->where('category_name', $categoryname);
+    }
+  
+    $products = $query->with(['category', 'creator'])->get();
     
     $response->getBody()->write(json_encode($products));
     return $response->withHeader('Content-Type', 'application/json');
@@ -369,16 +415,23 @@ $app->post('/api/products', function (Request $request, Response $response) {
     }
     $data = json_decode($request->getBody(), true);
 
-    if (empty($data['name']) || empty($data['description']) || !isset($data['price']) || !isset($data['stock'])) {
+    if (empty($data['name']) || empty($data['description']) || !isset($data['price']) || !isset($data['stock']) || !isset($data['category_name'])) {
         $response->getBody()->write(json_encode([
-            'error' => 'Name, description, price, and stock are required.'
+            'error' => 'Name, description, price, stock, and category are required.'
         ]));
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+    }
+
+    $category = Category::find($data['category_name']);
+    if (!$category) {
+        $response->getBody()->write(json_encode(['error' => 'Invalid category']));
         return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
     }
 
     $product = Product::create([
         'name' => $data['name'],
         'created_by' => $adminUser->id,
+        'category_name' => $data['category_name'],
         'description' => $data['description'],
         'image_url' => $data['image_url'] ?? null,
         'price' => $data['price'],

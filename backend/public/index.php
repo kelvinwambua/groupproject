@@ -21,23 +21,49 @@ $app = AppFactory::create();
 
 $app->addErrorMiddleware(true, true, true);
 
-// Enhanced CORS middleware
 $app->add(function ($request, $handler) {
-    $response = $handler->handle($request);
-    
-    // Get the origin from the request
-    $origin = $request->getHeaderLine('Origin');
-    $allowedOrigins = ['http://localhost:5173', 'http://localhost:3000'];
-    
-    if (in_array($origin, $allowedOrigins)) {
-        $response = $response->withHeader('Access-Control-Allow-Origin', $origin);
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
     }
+    return $handler->handle($request);
+});
+
+
+$app->add(function ($request, $handler) {
+    $origin = $request->getHeaderLine('Origin');
     
-    return $response
-        ->withHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Accept, Origin, Authorization')
-        ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
-        ->withHeader('Access-Control-Allow-Credentials', 'true')
-        ->withHeader('Access-Control-Max-Age', '3600');
+    $allowedOrigins = [
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:5174',
+        'http://127.0.0.1:5174',
+        'http://localhost:3000'
+    ];
+
+    if ($request->getMethod() === 'OPTIONS') {
+        $response = new \Slim\Psr7\Response();
+        if (in_array($origin, $allowedOrigins)) {
+            return $response
+                ->withHeader('Access-Control-Allow-Origin', $origin)
+                ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
+                ->withHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Accept, Origin, Authorization')
+                ->withHeader('Access-Control-Allow-Credentials', 'true')
+                ->withHeader('Access-Control-Max-Age', '3600')
+                ->withStatus(204);
+        }
+        return $response->withStatus(204);
+    }
+
+    $response = $handler->handle($request);
+    if (in_array($origin, $allowedOrigins)) {
+        $response = $response
+            ->withHeader('Access-Control-Allow-Origin', $origin)
+            ->withHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Accept, Origin, Authorization')
+            ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
+            ->withHeader('Access-Control-Allow-Credentials', 'true')
+            ->withHeader('Access-Control-Max-Age', '3600');
+    }
+    return $response;
 });
 
 require __DIR__ . '/../src/routes.php';

@@ -27,7 +27,10 @@ export default function Login() {
         }
 
         try {
-            const res = await fetch("http://localhost:8000/api/login", {
+            const baseUrl = (import.meta as any).env?.VITE_BACKEND_URL ?? "http://localhost:8000";
+            const url = `${baseUrl.replace(/\/$/, "")}/api/login`;
+
+            const res = await fetch(url, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -35,21 +38,29 @@ export default function Login() {
                 credentials: "include",
                 body: JSON.stringify({ email, password, remember: rememberMe }),
             });
-            const data = await res.json();
-            
+
+            const text = await res.text();
+            let data: any = {};
+            try { data = JSON.parse(text); } catch (e) { data = { error: text }; }
+
             if (res.ok && data.success) {
                 if (data.requires_2fa) {
                     localStorage.setItem('verify_email', email);
                     window.location.href = "/verify-2fa";
                 } else {
+                    
+                    if (data.access_token) localStorage.setItem('access_token', data.access_token);
                     window.location.href = "/";
                 }
             } else {
-                setError(data.error || "Login failed");
+                const message = data.error || data.message || text || "Login failed";
+                console.error('Login error response', res.status, message);
+                setError(typeof message === 'string' ? message : JSON.stringify(message));
                 setIsLoading(false);
             }
-        } catch (err) {
-            setError("Network error. Please try again.");
+        } catch (err: any) {
+            console.error('Network/login error', err);
+            setError("Network error. Please check backend and try again.");
             setIsLoading(false);
         }
     };

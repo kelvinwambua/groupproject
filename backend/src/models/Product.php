@@ -8,16 +8,14 @@ class Product extends Model
 {
     protected $table = 'products';
     protected $fillable = [
-        'name', 
-        'created_by', 
-        'description', 
+        'name',
+        'category_name',
+        'created_by',
+        'description',
         'image_url',
         'price',
         'stock',
-
     ];
-
-
 
     protected $casts = [
         'created_at' => 'datetime',
@@ -26,5 +24,15 @@ class Product extends Model
 
     public $timestamps = true;
 
+ 
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 
 }

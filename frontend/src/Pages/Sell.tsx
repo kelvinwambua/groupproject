@@ -1,10 +1,10 @@
-import React, { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import React, { useState, useEffect } from "react"
+import { Button } from "../Components/ui/button"
+import { Input } from "../Components/ui/input"
+import { Label } from "../Components/ui/label"
+import { Textarea } from "../Components/ui/textarea"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../Components/ui/card"
+import { Alert, AlertDescription } from "../Components/ui/alert"
 import { Loader2, Upload, X, Package } from "lucide-react"
 
 export default function SellItem() {
@@ -13,17 +13,23 @@ export default function SellItem() {
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [categories, setCategories] = useState<Array<{id:number,name:string}>>([])
+  const [category_name, setCategory_name] = useState<string>("")
+
+  useEffect(() => {
+    fetch("http://localhost:8000/api/categories", { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => setCategories(Array.isArray(data) ? data : []))
+      .catch(() => setCategories([]))
+  }, [])
 
   async function handleImageUpload(file: File) {
     setLoading(true)
     setError(null)
-
     const formData = new FormData()
     formData.append("image", file)
-
     try {
       const token = localStorage.getItem('access_token')
-      
       const uploadRes = await fetch("http://localhost:8000/api/products/upload", {
         method: "POST",
         body: formData,
@@ -32,15 +38,11 @@ export default function SellItem() {
           'Authorization': token ? `Bearer ${token}` : '',
         }
       })
-
       const uploadData = await uploadRes.json()
-
       if (!uploadRes.ok) throw new Error(uploadData.error || "Upload failed")
-
       setUploadedImageUrl(uploadData.url)
       setImagePreview(URL.createObjectURL(file))
     } catch (error) {
-      console.error("Error uploading image:", error)
       setError("Failed to upload image. Please try again.")
     } finally {
       setLoading(false)
@@ -63,27 +65,28 @@ export default function SellItem() {
     event.preventDefault()
     setLoading(true)
     setError(null)
-
     const form = event.currentTarget
     const formData = new FormData(form)
-
     if (!uploadedImageUrl) {
       setError("Please upload an image first")
       setLoading(false)
       return
     }
-
+    if (!category_name) {
+      setError("Please select a category")
+      setLoading(false)
+      return
+    }
     try {
       const token = localStorage.getItem('access_token')
-
       const productData = {
         name: formData.get("name"),
         description: formData.get("description"),
         price: parseFloat(formData.get("price") as string),
         stock: parseInt(formData.get("stock") as string),
         image_url: uploadedImageUrl,
+        category_name: parseInt(category_name)
       }
-
       const productRes = await fetch("http://localhost:8000/api/products", {
         method: "POST",
         headers: {
@@ -93,21 +96,15 @@ export default function SellItem() {
         credentials: 'include',
         body: JSON.stringify(productData),
       })
-
       const result = await productRes.json()
-
       if (!productRes.ok) throw new Error(result.error || "Failed to create product")
-
-      console.log("Product created:", result)
       setSuccess(true)
-      
       form.reset()
       setImagePreview(null)
       setUploadedImageUrl(null)
-
+      setCategory_name("")
       setTimeout(() => setSuccess(false), 5000)
     } catch (error) {
-      console.error("Error submitting item:", error)
       setError("Failed to submit item. Please try again.")
     } finally {
       setLoading(false)
@@ -122,7 +119,6 @@ export default function SellItem() {
           <h1 className="text-4xl font-bold text-gray-900 mb-2">List Your Product</h1>
           <p className="text-gray-600">Fill in the details to add your item to the marketplace</p>
         </div>
-
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Product Details</CardTitle>
@@ -135,13 +131,11 @@ export default function SellItem() {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-
               {success && (
                 <Alert className="bg-green-50 text-green-900 border-green-200">
                   <AlertDescription>Product created successfully!</AlertDescription>
                 </Alert>
               )}
-
               <div className="space-y-2">
                 <Label htmlFor="image">Product Image</Label>
                 <div className="flex items-center justify-center w-full">
@@ -185,7 +179,6 @@ export default function SellItem() {
                   )}
                 </div>
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="name">Product Name</Label>
                 <Input
@@ -197,7 +190,6 @@ export default function SellItem() {
                   disabled={loading}
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
@@ -209,7 +201,6 @@ export default function SellItem() {
                   disabled={loading}
                 />
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="price">Price</Label>
@@ -223,7 +214,6 @@ export default function SellItem() {
                     disabled={loading}
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="stock">Stock Quantity</Label>
                   <Input
@@ -236,7 +226,23 @@ export default function SellItem() {
                   />
                 </div>
               </div>
-
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <select
+                  id="category"
+                  name="category"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={category_name}
+                  onChange={e => setCategory_name(e.target.value)}
+                  required
+                  disabled={loading}
+                >
+                  <option value="">Select a category</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.name}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
               <Button
                 type="submit"
                 className="w-full"
