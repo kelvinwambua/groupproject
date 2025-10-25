@@ -8,10 +8,10 @@ $capsule = new Capsule;
 $capsule->addConnection([
     'driver' => 'mysql',
     'host' => $_ENV['DB_HOST'] ?? 'localhost',
-    'port' => $_ENV['DB_PORT'] ?? 3307,
+    'port' => $_ENV['DB_PORT'] ?? 3306,
     'database' => $_ENV['DB_DATABASE'] ?? 'shop',
     'username' => $_ENV['DB_USERNAME'] ?? 'root',
-    'password' => $_ENV['DB_PASSWORD'] ?? 'michelle',
+    'password' => $_ENV['DB_PASSWORD'] ?? 'Jason',
     'charset' => 'utf8mb4',
     'collation' => 'utf8mb4_unicode_ci',
     'prefix' => '',

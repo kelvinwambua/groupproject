@@ -406,23 +406,23 @@ $app->get('/api/products/{id}', function (Request $request, Response $response, 
     return $response->withHeader('Content-Type', 'application/json');
 });
 $app->post('/api/products', function (Request $request, Response $response) {
-          $controller = new LoginController();
-
+    $controller = new LoginController();
     $adminUser = $controller->check();
+
     if(!$adminUser) {
         $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
         return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
     }
+
     $data = json_decode($request->getBody(), true);
 
-    if (empty($data['name']) || empty($data['description']) || !isset($data['price']) || !isset($data['stock']) || !isset($data['category_name'])) {
-        $response->getBody()->write(json_encode([
-            'error' => 'Name, description, price, stock, and category are required.'
-        ]));
+    if (empty($data['name']) || empty($data['description']) || 
+        !isset($data['price']) || !isset($data['stock']) || !isset($data['category_id'])) {
+        $response->getBody()->write(json_encode(['error' => 'Missing fields']));
         return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
     }
 
-    $category = Category::find($data['category_name']);
+    $category = Category::find($data['category_id']);
     if (!$category) {
         $response->getBody()->write(json_encode(['error' => 'Invalid category']));
         return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
@@ -431,16 +431,17 @@ $app->post('/api/products', function (Request $request, Response $response) {
     $product = Product::create([
         'name' => $data['name'],
         'created_by' => $adminUser->id,
-        'category_name' => $data['category_name'],
+        'category_id' => $data['category_id'],
         'description' => $data['description'],
         'image_url' => $data['image_url'] ?? null,
         'price' => $data['price'],
         'stock' => $data['stock'],
     ]);
 
-    $response->getBody()->write(json_encode($product));
+    $response->getBody()->write(json_encode($product->load('category')));
     return $response->withStatus(201)->withHeader('Content-Type', 'application/json');
 });
+
 $app->post('/api/products/upload', function (Request $request, Response $response) {
     $controller = new LoginController();
 
