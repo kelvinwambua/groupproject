@@ -85,7 +85,7 @@ export default function SellItem() {
           price: parseFloat(formData.get("price") as string),
           stock: parseInt(formData.get("stock") as string),
           image_url: uploadedImageUrl,
-          category_id: parseInt(category_id)
+          category_name: formData.get("category_name"),
         };
 
       const productRes = await fetch("http://localhost:8000/api/products", {
@@ -231,7 +231,7 @@ export default function SellItem() {
                 <Label htmlFor="category">Category</Label>
                 <select
                   id="category"
-                  name="category"
+                  name="category_name"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={category_name}
                   onChange={e => setCategory_name(e.target.value)}
@@ -240,7 +240,7 @@ export default function SellItem() {
                 >
                   <option value="">Select a category</option>
                   {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    <option key={cat.id} value={cat.name}>{cat.name}</option>
                   ))}
                 </select>
 

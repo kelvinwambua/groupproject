@@ -417,12 +417,12 @@ $app->post('/api/products', function (Request $request, Response $response) {
     $data = json_decode($request->getBody(), true);
 
     if (empty($data['name']) || empty($data['description']) || 
-        !isset($data['price']) || !isset($data['stock']) || !isset($data['category_id'])) {
+        !isset($data['price']) || !isset($data['stock']) || !isset($data['category_name'])) {
         $response->getBody()->write(json_encode(['error' => 'Missing fields']));
         return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
     }
 
-    $category = Category::find($data['category_id']);
+    $category = Category::where('name', $data['category_name'])->first();
     if (!$category) {
         $response->getBody()->write(json_encode(['error' => 'Invalid category']));
         return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
@@ -431,7 +431,7 @@ $app->post('/api/products', function (Request $request, Response $response) {
     $product = Product::create([
         'name' => $data['name'],
         'created_by' => $adminUser->id,
-        'category_id' => $data['category_id'],
+        'category_id' => $category->id,         
         'description' => $data['description'],
         'image_url' => $data['image_url'] ?? null,
         'price' => $data['price'],
