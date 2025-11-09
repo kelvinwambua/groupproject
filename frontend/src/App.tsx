@@ -10,6 +10,7 @@ import { Users } from "./Pages/Users";
 import SellItem from "./Pages/Sell";
 import AdminAddProduct from "./Pages/AdminAddProduct";
 import Profile from "./Pages/Profile";
+import Cart from "./Pages/Cart";
 
 
 export default function App() {
@@ -28,6 +29,7 @@ export default function App() {
             <Route path="/admin/add-product" element={<AdminAddProduct />} />
             <Route path="/sell-item" element={<SellItem />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/cart" element={<Cart />} />
           </Routes>
         </main>
       </Router>

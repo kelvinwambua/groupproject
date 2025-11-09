@@ -145,9 +145,7 @@ const NavBar: React.FC<NavBarProps> = ({ links = defaultLinks }) => {
 										<Button asChild>
 											<a href="/users">Manage Users</a>
 										</Button>
-										<Button asChild>
-											<a href="/admin/add-product">Add Product</a>
-										</Button>
+										
 									</>
 								)
 							}
