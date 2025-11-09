@@ -8,6 +8,23 @@ use App\Models\Product;
 use App\Models\Category;
 use Dompdf\Dompdf;
 use Dompdf\Options; 
+use App\Models\Cart;    
+use App\Models\Cart_Item;
+
+// Helper function to get or create cart for user
+$getOrCreateActiveCart = function (User $user) {
+    
+    $cart = Cart::where('user_id', $user->id)
+                ->where('status', 'active')
+                ->first();    
+    if (!$cart) {
+        $cart = new Cart();
+        $cart->user_id = $user->id;
+        $cart->status = 'active';
+        $cart->save();
+    }
+    return $cart;
+};
 
 // Category routes
 $app->get('/api/categories', function (Request $request, Response $response) {
@@ -493,5 +510,151 @@ $app->post('/api/products/upload', function (Request $request, Response $respons
     return $response->withStatus(201)->withHeader('Content-Type', 'application/json');
 });
 
+$app->get('/api/users/{id}/cart', function (Request $request, Response $response, $args) {
+    $controller = new LoginController();
+    $user = User::find($args['id']);
 
+    if (!$user) {
+        $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
+        return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
+    }
 
+    $cart = Cart::where('user_id', $user->id)
+                ->where('status', 'active')
+                ->with('cart_items.product')
+                ->first();
+
+    if (!$cart) {
+        $response->getBody()->write(json_encode(['cart_items' => [], 'quantity' => 0, 'total_price' => 0]));
+        return $response->withHeader('Content-Type', 'application/json');
+    }
+
+    $response->getBody()->write(json_encode($cart));
+    return $response->withHeader('Content-Type', 'application/json');
+});
+$app->post('/api/users/{id}/cart', function (Request $request, Response $response, $args) use ($getOrCreateActiveCart) {
+    $userId = $args['id'];
+    $user = User::find($userId);
+
+    if (!$user) {
+        $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
+        return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
+    }
+
+    $data = $request->getParsedBody();
+    $productId = $data['product_id'] ?? null;
+    $quantity = (int) ($data['quantity'] ?? 1); 
+
+    if (!$productId || $quantity <= 0) {
+        $response->getBody()->write(json_encode(['error' => 'Invalid product ID or quantity.']));
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+    }
+
+    $cart = $getOrCreateActiveCart($user);
+
+    
+    $Cart_Item = Cart_Item::where('cart_id', $cart->id)
+                        ->where('product_id', $productId)
+                        ->first();
+
+    if ($Cart_Item) {
+        
+        $Cart_Item->quantity += $quantity;
+        $Cart_Item->save();
+        $message = "Product quantity incremented.";
+    } else {
+        
+        $Cart_Item = new Cart_Item();
+        $Cart_Item->cart_id = $cart->id;
+        $Cart_Item->product_id = $productId;
+        $Cart_Item->quantity = $quantity;
+        $Cart_Item->save();
+        $message = "Product added to cart.";
+    }
+
+    
+    $updatedCart = $cart->load('cart_items.product'); 
+    $response->getBody()->write(json_encode(['message' => $message, 'cart' => $updatedCart]));
+    return $response->withStatus(200)->withHeader('Content-Type', 'application/json');
+});
+$app->put('/api/users/{id}/cart', function (Request $request, Response $response, $args) {
+    $userId = $args['id'];
+    $user = User::find($userId);
+
+    if (!$user) {
+        $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
+        return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
+    }
+
+    $data = $request->getParsedBody();
+    $Cart_ItemId = $data['cart_item_id'] ?? null;
+    $newQuantity = (int) ($data['quantity'] ?? 0);
+
+    if (!$Cart_ItemId || $newQuantity < 0) {
+        $response->getBody()->write(json_encode(['error' => 'Invalid cart item ID or quantity.']));
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+    }
+    
+    
+    $Cart_Item = Cart_Item::where('id', $Cart_ItemId)
+                        ->whereHas('cart', function ($query) use ($userId) {
+                            $query->where('user_id', $userId)->where('status', 'active');
+                        })
+                        ->first();
+
+    if (!$Cart_Item) {
+        $response->getBody()->write(json_encode(['error' => 'Cart item not found or does not belong to user.']));
+        return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+    }
+    
+    $message = "Quantity updated successfully.";
+
+    if ($newQuantity === 0) {
+        
+        $Cart_Item->delete();
+        $message = "Cart item removed successfully.";
+    } else {
+        
+        $Cart_Item->quantity = $newQuantity;
+        $Cart_Item->save();
+    }
+
+    
+    $updatedCart = Cart::where('user_id', $userId)
+                        ->where('status', 'active')
+                        ->with('cart_items.product')
+                        ->first();
+                        
+    $response->getBody()->write(json_encode(['message' => $message, 'cart' => $updatedCart]));
+    return $response->withStatus(200)->withHeader('Content-Type', 'application/json');
+});
+$app->delete('/api/users/{id}/cart/{cart_item_id}', function (Request $request, Response $response, $args) {
+    $userId = $args['id'];
+    $Cart_ItemId = $args['cart_item_id'];
+    $user = User::find($userId);
+
+    if (!$user) {
+        $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
+        return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
+    }   
+    
+    $deletedCount = Cart_Item::where('id', $Cart_ItemId)
+                        ->whereHas('cart', function ($query) use ($userId) {
+                            $query->where('user_id', $userId)->where('status', 'active');
+                        })
+                        ->delete(); 
+
+    if ($deletedCount === 0) {
+        $response->getBody()->write(json_encode(['error' => 'Cart item not found or already removed.']));
+        return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+    }
+
+    
+    $updatedCart = Cart::where('user_id', $userId)
+                        ->where('status', 'active')
+                        ->with('cart_items.product')
+                        ->first();
+                        
+    $response->getBody()->write(json_encode(['message' => 'Item successfully removed from cart.', 'cart' => $updatedCart]));
+    return $response->withStatus(200)->withHeader('Content-Type', 'application/json');
+});
