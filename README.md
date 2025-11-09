@@ -32,7 +32,7 @@ cp .env.example .env
 composer install
 ```
 
-4. Import the database schema:(Ensure your .env has the required database credentials
+4. Import the database schema: (Ensure your .env has the required database credentials)
 ```bash
 cd src
 php db.php
