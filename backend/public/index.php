@@ -31,20 +31,18 @@ $app->add(function ($request, $handler) {
 
 $app->add(function ($request, $handler) {
     $origin = $request->getHeaderLine('Origin');
-    
-    $allowedOrigins = [
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:5174',
-        'http://127.0.0.1:5174',
-        'http://localhost:3000'
-    ];
+
+    // Allow localhost origins on any port (useful during development)
+    $isLocalOrigin = false;
+    if ($origin) {
+        $isLocalOrigin = preg_match('#^https?://(localhost|127\.0\.0\.1)(:\d+)?$#', $origin);
+    }
 
     if ($request->getMethod() === 'OPTIONS') {
         $response = new \Slim\Psr7\Response();
-        if (in_array($origin, $allowedOrigins)) {
+    if ($isLocalOrigin) {
             return $response
-                ->withHeader('Access-Control-Allow-Origin', $origin)
+        ->withHeader('Access-Control-Allow-Origin', $origin)
                 ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
                 ->withHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Accept, Origin, Authorization')
                 ->withHeader('Access-Control-Allow-Credentials', 'true')
@@ -55,7 +53,7 @@ $app->add(function ($request, $handler) {
     }
 
     $response = $handler->handle($request);
-    if (in_array($origin, $allowedOrigins)) {
+    if ($isLocalOrigin) {
         $response = $response
             ->withHeader('Access-Control-Allow-Origin', $origin)
             ->withHeader('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Accept, Origin, Authorization')

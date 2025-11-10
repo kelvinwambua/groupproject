@@ -11,6 +11,7 @@ import SellItem from "./Pages/Sell";
 import AdminAddProduct from "./Pages/AdminAddProduct";
 import Profile from "./Pages/Profile";
 import Cart from "./Pages/Cart";
+import OrderConfirmation from "./Pages/OrderConfirmation";
 import Services from "./Pages/Services";
 import Contact from "./Pages/Contact";
 
@@ -33,6 +34,7 @@ export default function App() {
             <Route path="/sell-item" element={<SellItem />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/cart" element={<Cart />} />
+            <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
             <Route path="/services" element={<Services />} />
             <Route path="/contact" element={<Contact />} />
           </Routes>

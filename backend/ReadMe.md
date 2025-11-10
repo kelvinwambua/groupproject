@@ -43,8 +43,8 @@ The database queries are in shop.sql
 Run the following command in the `backend` directory:
 
 ```
-php -S localhost:8000 -t public
-```
+ -t public
+```php -S localhost:8000
 
 This will start the backend server at [http://localhost:8000](http://localhost:8000).
 

@@ -1,22 +1,22 @@
 <?php
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
-use App\Models\User;  
-use App\Controllers\LoginController;  
+use App\Models\User;
+use App\Controllers\LoginController;
 use App\Controllers\SignupController;
-use App\Models\Product; 
+use App\Models\Product;
 use App\Models\Category;
 use Dompdf\Dompdf;
-use Dompdf\Options; 
-use App\Models\Cart;    
+use Dompdf\Options;
+use App\Models\Cart;
 use App\Models\Cart_Item;
+use Illuminate\Database\Capsule\Manager as Capsule;
 
 // Helper function to get or create cart for user
 $getOrCreateActiveCart = function (User $user) {
-    
     $cart = Cart::where('user_id', $user->id)
                 ->where('status', 'active')
-                ->first();    
+                ->first();
     if (!$cart) {
         $cart = new Cart();
         $cart->user_id = $user->id;
@@ -26,7 +26,26 @@ $getOrCreateActiveCart = function (User $user) {
     return $cart;
 };
 
-// Category routes
+// Simple shipping cost calculator closure
+$computeShippingCost = function ($shipping, $subtotal = 0.0) {
+    $country = strtolower(trim($shipping['country'] ?? ''));
+    $city = strtolower(trim($shipping['city'] ?? ''));
+    $subtotal = floatval($subtotal);
+
+    
+    if ($country === 'kenya' || $country === 'ke') {
+        
+        if ($city !== '' && strpos($city, 'nairobi') !== false) {
+            return ['method' => 'Local Standard', 'cost' => 100.00, 'eta_days' => 1];
+        }
+
+        return ['method' => 'National Standard', 'cost' => 300.00, 'eta_days' => 3];
+    }
+
+
+    return ['method' => 'International Standard', 'cost' => 1000.00, 'eta_days' => 7];
+};
+
 $app->get('/api/categories', function (Request $request, Response $response) {
     $categories = Category::all();
     $response->getBody()->write(json_encode($categories));
@@ -54,6 +73,7 @@ $app->post('/api/categories', function (Request $request, Response $response) {
     ]);
 
     $response->getBody()->write(json_encode($category));
+
     return $response->withStatus(201)->withHeader('Content-Type', 'application/json');
 });
 
@@ -658,6 +678,169 @@ $app->delete('/api/users/{id}/cart/{cart_item_id}', function (Request $request, 
     $response->getBody()->write(json_encode(['message' => 'Item successfully removed from cart.', 'cart' => $updatedCart]));
     return $response->withStatus(200)->withHeader('Content-Type', 'application/json');
 });
+
+// Checkout 
+$app->post('/api/users/{id}/checkout', function (Request $request, Response $response, $args) {
+    $userId = $args['id'];
+    $user = User::find($userId);
+
+    if (!$user) {
+        $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
+        return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
+    }
+
+    
+    $body = $request->getParsedBody();
+    if (is_null($body)) {
+        
+        $raw = (string) $request->getBody();
+        $body = json_decode($raw, true) ?? [];
+    }
+    $shipping = $body['shipping'] ?? null;
+
+
+    $subtotal = 0.0;
+    foreach ($cart->cart_items ?? [] as $ci_tmp) {
+        $pprice = floatval($ci_tmp->product->price ?? 0);
+        $subtotal += $pprice * $ci_tmp->quantity;
+    }
+    if ($shipping && !isset($shipping['cost'])) {
+        try {
+            $calc = $computeShippingCost($shipping, $subtotal);
+            $shipping['cost'] = $calc['cost'];
+            if (!isset($shipping['method'])) $shipping['method'] = $calc['method'];
+        } catch (\Exception $e) {
+            
+        }
+    }
+
+    
+    $cart = Cart::where('user_id', $user->id)
+                ->where('status', 'active')
+                ->with('cart_items.product')
+                ->first();
+
+    if (!$cart || empty($cart->cart_items)) {
+        $response->getBody()->write(json_encode(['error' => 'Cart is empty.']));
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+    }
+
+    try {
+    $orderId = null;
+    Capsule::connection()->transaction(function () use ($cart, $user, &$orderId, $shipping) {
+            $total = 0.0;
+            $orderItems = [];
+
+            foreach ($cart->cart_items as $ci) {
+                $product = $ci->product;
+                if (!$product) {
+                    throw new \Exception("Product not found: {$ci->product_id}");
+                }
+                if ($product->stock < $ci->quantity) {
+                    throw new \Exception("Insufficient stock for product {$product->id}: available {$product->stock}, requested {$ci->quantity}");
+                }
+                $price = isset($product->price) ? floatval($product->price) : 0.0;
+                $line = $price * $ci->quantity;
+                $total += $line;
+                $orderItems[] = [
+                    'product_id' => $product->id,
+                    'quantity' => $ci->quantity,
+                    'price' => $price,
+                ];
+            }
+
+            
+            $shipping_cost = 0.0;
+            $shipping_method = null;
+            if ($shipping) {
+                
+                if (isset($shipping['cost']) && is_numeric($shipping['cost'])) {
+                    $shipping_cost = floatval($shipping['cost']);
+                } else {
+                    
+                    $country = strtolower(trim((string)($shipping['country'] ?? '')));
+                    $city = strtolower(trim((string)($shipping['city'] ?? '')));
+
+                    if ($country === 'kenya') {
+                        if (strpos($city, 'nairobi') !== false) {
+                            $shipping_cost = 100.00;
+                            $shipping_method = 'local';
+                        } else {
+                            $shipping_cost = 300.00;
+                            $shipping_method = 'national';
+                        }
+                    } else {
+                        $shipping_cost = 1000.00;
+                        $shipping_method = 'international';
+                    }
+
+                    
+                }
+
+                if (isset($shipping['method']) && !$shipping_method) {
+                    $shipping_method = $shipping['method'];
+                }
+            }
+
+            $orderData = [
+                'user_id' => $user->id,
+                'status' => 'pending',
+                'total' => number_format($total, 2, '.', ''),
+                'shipping_address' => $shipping ? json_encode($shipping) : null,
+                'shipping_method' => $shipping_method ?? ($shipping['method'] ?? null),
+                'shipping_cost' => number_format($shipping_cost, 2, '.', ''),
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+
+            $orderId = Capsule::table('orders')->insertGetId($orderData);
+
+            foreach ($orderItems as $oi) {
+                Capsule::table('order_items')->insert([
+                    'order_id' => $orderId,
+                    'product_id' => $oi['product_id'],
+                    'quantity' => $oi['quantity'],
+                    'price' => number_format($oi['price'], 2, '.', ''),
+                    'created_at' => date('Y-m-d H:i:s')
+                ]);
+
+                Capsule::table('products')->where('id', $oi['product_id'])->decrement('stock', $oi['quantity']);
+            }
+
+            $cart->status = 'completed';
+            $cart->save();
+        });
+
+        $created = Capsule::table('orders')->where('id', $orderId)->first();
+        $response->getBody()->write(json_encode(['message' => 'Checkout successful', 'order' => $created]));
+        return $response->withStatus(201)->withHeader('Content-Type', 'application/json');
+
+    } catch (\Exception $e) {
+        $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+    }
+});
+
+// Get order details
+$app->get('/api/orders/{id}', function (Request $request, Response $response, $args) {
+    $orderId = $args['id'];
+    $order = Capsule::table('orders')->where('id', $orderId)->first();
+    if (!$order) {
+        $response->getBody()->write(json_encode(['error' => 'Order not found']));
+        return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+    }
+
+    $items = Capsule::table('order_items')
+                ->where('order_id', $orderId)
+                ->join('products', 'order_items.product_id', '=', 'products.id')
+                ->select('order_items.*', 'products.name as product_name', 'products.image_url as product_image')
+                ->get();
+
+    $order->items = $items;
+
+    $response->getBody()->write(json_encode($order));
+    return $response->withHeader('Content-Type', 'application/json');
+});
 $app->post('/api/users/send-email', function (Request $request, Response $response) {
     $data = json_decode($request->getBody(), true);
 
@@ -676,4 +859,115 @@ $app->post('/api/users/send-email', function (Request $request, Response $respon
         $response->getBody()->write(json_encode(['error' => 'Failed to send email.']));
         return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
     }
+});
+
+// Shipping cost calculator endpoint
+$app->post('/api/shipping/calc', function (Request $request, Response $response) use ($computeShippingCost) {
+    $body = $request->getParsedBody();
+    if (is_null($body)) {
+        $raw = (string) $request->getBody();
+        $body = json_decode($raw, true) ?? [];
+    }
+
+    $shipping = $body['shipping'] ?? null;
+    $subtotal = isset($body['subtotal']) ? floatval($body['subtotal']) : 0.0;
+
+    if (!$shipping || !is_array($shipping)) {
+        $response->getBody()->write(json_encode(['error' => 'Shipping information required']));
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+    }
+
+    $calc = $computeShippingCost($shipping, $subtotal);
+    $eta_days = isset($calc['eta_days']) ? intval($calc['eta_days']) : null;
+    $eta_date = $eta_days !== null ? date('Y-m-d', strtotime("+{$eta_days} days")) : null;
+
+    $response->getBody()->write(json_encode([
+        'method' => $calc['method'],
+        'cost' => $calc['cost'],
+        'eta_days' => $eta_days,
+        'eta_date' => $eta_date
+    ]));
+    return $response->withHeader('Content-Type', 'application/json');
+});
+
+
+$app->get('/api/users/{id}/addresses', function (Request $request, Response $response, $args) {
+    $userId = $args['id'];
+    $user = User::find($userId);
+    if (!$user) {
+        $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
+        return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
+    }
+
+    $addresses = Capsule::table('addresses')->where('user_id', $userId)->get();
+    $response->getBody()->write(json_encode($addresses));
+    return $response->withHeader('Content-Type', 'application/json');
+});
+
+$app->post('/api/users/{id}/addresses', function (Request $request, Response $response, $args) {
+    $userId = $args['id'];
+    $user = User::find($userId);
+    if (!$user) {
+        $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
+        return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
+    }
+
+    $data = $request->getParsedBody() ?? json_decode((string)$request->getBody(), true) ?? [];
+    $required = ['recipient_name','line1','city','postal_code','country'];
+    foreach ($required as $r) {
+        if (empty($data[$r])) {
+            $response->getBody()->write(json_encode(['error' => "Field $r is required"]));
+            return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+        }
+    }
+
+    $id = Capsule::table('addresses')->insertGetId([
+        'user_id' => $userId,
+        'label' => $data['label'] ?? null,
+        'recipient_name' => $data['recipient_name'],
+        'line1' => $data['line1'],
+        'line2' => $data['line2'] ?? null,
+        'city' => $data['city'],
+        'state' => $data['state'] ?? null,
+        'postal_code' => $data['postal_code'],
+        'country' => $data['country'],
+        'phone' => $data['phone'] ?? null,
+        'created_at' => date('Y-m-d H:i:s'),
+        'updated_at' => date('Y-m-d H:i:s')
+    ]);
+
+    $addr = Capsule::table('addresses')->where('id', $id)->first();
+    $response->getBody()->write(json_encode($addr));
+    return $response->withStatus(201)->withHeader('Content-Type', 'application/json');
+});
+
+$app->put('/api/users/{id}/addresses/{aid}', function (Request $request, Response $response, $args) {
+    $userId = $args['id'];
+    $aid = $args['aid'];
+    $user = User::find($userId);
+    if (!$user) {
+        $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
+        return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
+    }
+
+    $data = $request->getParsedBody() ?? json_decode((string)$request->getBody(), true) ?? [];
+    Capsule::table('addresses')->where('id', $aid)->where('user_id', $userId)->update(array_merge($data, ['updated_at' => date('Y-m-d H:i:s')]));
+
+    $addr = Capsule::table('addresses')->where('id', $aid)->first();
+    $response->getBody()->write(json_encode($addr));
+    return $response->withHeader('Content-Type', 'application/json');
+});
+
+$app->delete('/api/users/{id}/addresses/{aid}', function (Request $request, Response $response, $args) {
+    $userId = $args['id'];
+    $aid = $args['aid'];
+    $user = User::find($userId);
+    if (!$user) {
+        $response->getBody()->write(json_encode(['error' => 'Unauthorized']));
+        return $response->withStatus(403)->withHeader('Content-Type', 'application/json');
+    }
+
+    Capsule::table('addresses')->where('id', $aid)->where('user_id', $userId)->delete();
+    $response->getBody()->write(json_encode(['message' => 'Address deleted']));
+    return $response->withHeader('Content-Type', 'application/json');
 });

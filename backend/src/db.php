@@ -9,8 +9,9 @@ $dotenv = Dotenv::createImmutable($rootDir);
 try {
     $dotenv->load();
 } catch (\Dotenv\Exception\InvalidPathException $e) {
-    
-    die("Error: .env file not found in $rootDir. Please create one.\n");
+    // Log and stop silently to avoid emitting HTML to API responses
+    error_log("Error: .env file not found in $rootDir. Please create one.");
+    exit(1);
 }
 
 
@@ -30,10 +31,11 @@ $options = [
 
 
 try {
-     $pdo = new PDO("mysql:host=$host;charset=$charset", $user, $pass, $options);
-     echo "Connection to MySQL established.\n";
+    $pdo = new PDO("mysql:host=$host;charset=$charset", $user, $pass, $options);
+    error_log("Connection to MySQL established.");
 } catch (\PDOException $e) {
-     die("Connection failed: " . $e->getMessage() . "\n");
+    error_log("Connection failed: " . $e->getMessage());
+    exit(1);
 }
 
 
@@ -105,6 +107,25 @@ $sql = "
         FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
     );
 
+    -- addresses table (user shipping addresses)
+    CREATE TABLE IF NOT EXISTS addresses (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        user_id INT UNSIGNED NOT NULL,
+        label VARCHAR(100) DEFAULT NULL,
+        recipient_name VARCHAR(150) NOT NULL,
+        line1 VARCHAR(255) NOT NULL,
+        line2 VARCHAR(255) DEFAULT NULL,
+        city VARCHAR(100) NOT NULL,
+        state VARCHAR(100) DEFAULT NULL,
+        postal_code VARCHAR(30) NOT NULL,
+        country VARCHAR(10) NOT NULL,
+        phone VARCHAR(30) DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX (user_id)
+    );
+
     -- carts table
     CREATE TABLE IF NOT EXISTS carts (
         id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -127,15 +148,42 @@ $sql = "
         FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE,
         FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
     );
+
+    -- orders table
+    CREATE TABLE IF NOT EXISTS orders (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        user_id INT UNSIGNED NOT NULL,
+        status VARCHAR(32) NOT NULL DEFAULT 'pending',
+        total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        shipping_address TEXT DEFAULT NULL,
+        shipping_method VARCHAR(100) DEFAULT NULL,
+        shipping_cost DECIMAL(10,2) DEFAULT 0.00,
+        payment_method_id INT UNSIGNED DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX (user_id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    -- order_items table
+    CREATE TABLE IF NOT EXISTS order_items (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        order_id INT UNSIGNED NOT NULL,
+        product_id INT UNSIGNED NOT NULL,
+        quantity INT UNSIGNED NOT NULL,
+        price DECIMAL(10,2) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+    );
 ";
 
 
 try {
     $pdo->exec($sql);
-    echo "Database '$db' created/selected.\n";
-    echo "All tables created or confirmed to exist successfully.\n";
+    error_log("Database '$db' created/selected and tables ensured.");
 } catch (\PDOException $e) {
-    echo "Database error: " . $e->getMessage() . "\n";
+    error_log("Database error: " . $e->getMessage());
 }
 
 ?>

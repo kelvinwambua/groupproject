@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ModeToggle } from './mode-toggle';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"; // CORRECTED PATH
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { LogOut, User, ShoppingCart } from 'lucide-react';
 
 interface NavBarProps {
@@ -110,7 +110,7 @@ const NavBar: React.FC<NavBarProps> = ({ links = defaultLinks }) => {
 									`}
 									asChild
 								>
-									<a href={link.path}>{link.name}</a>
+									<Link to={link.path}>{link.name}</Link>
 								</Button>
 								{isActive && (
 									<span className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 h-0.5 w-4 bg-primary rounded-full" />
@@ -129,15 +129,13 @@ const NavBar: React.FC<NavBarProps> = ({ links = defaultLinks }) => {
 						<>
 
 							<Button variant="ghost" size="icon" asChild>
-								<a href="/cart" className="relative hover:text-primary">
+								<Link to="/cart" className="relative hover:text-primary" aria-label="View Cart">
 									<ShoppingCart className="h-5 w-5" />
-									<span className="sr-only">View Cart</span>
-
-								</a>
+								</Link>
 							</Button>
 
 							<Button asChild>
-								<a href="/sell-item">Sell Item</a>
+								<Link to="/sell-item">Sell Item</Link>
 							</Button>
 							{
 								user.role === 'admin' && (
@@ -165,10 +163,10 @@ const NavBar: React.FC<NavBarProps> = ({ links = defaultLinks }) => {
 										<div className="text-sm text-muted-foreground">{user.email}</div>
 									</DropdownMenuItem>
 									<DropdownMenuItem asChild>
-										<a href="/profile" className="flex items-center">
+										<Link to="/profile" className="flex items-center">
 											<User className="mr-2 h-4 w-4" />
 											Profile
-										</a>
+										</Link>
 									</DropdownMenuItem>
 									<DropdownMenuItem onClick={handleLogout} className="text-red-600">
 										<LogOut className="mr-2 h-4 w-4" />
