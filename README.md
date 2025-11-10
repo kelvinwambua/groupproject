@@ -32,9 +32,10 @@ cp .env.example .env
 composer install
 ```
 
-4. Import the database schema:
+4. Import the database schema: (Ensure your .env has the required database credentials)
 ```bash
-mysql -u your_username -p your_database < shop.sql
+cd src
+php db.php
 ```
 
 ## Frontend Setup
