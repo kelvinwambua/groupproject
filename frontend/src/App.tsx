@@ -11,6 +11,9 @@ import SellItem from "./Pages/Sell";
 import AdminAddProduct from "./Pages/AdminAddProduct";
 import Profile from "./Pages/Profile";
 import Cart from "./Pages/Cart";
+import Services from "./Pages/Services";
+import Contact from "./Pages/Contact";
+
 
 
 export default function App() {
@@ -30,6 +33,8 @@ export default function App() {
             <Route path="/sell-item" element={<SellItem />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/cart" element={<Cart />} />
+            <Route path="/services" element={<Services />} />
+            <Route path="/contact" element={<Contact />} />
           </Routes>
         </main>
       </Router>

@@ -74,4 +74,32 @@ class EmailService
         </html>
         ";
     }
+    public function sendEmail($toEmail, $toName, $subject, $body)
+    {
+        try {
+            $mail = new PHPMailer(true);
+            
+            $mail->isSMTP();
+            $mail->Host = $this->smtp_host;
+            $mail->SMTPAuth = true;
+            $mail->Username = $this->smtp_username;
+            $mail->Password = $this->smtp_password;
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port = $this->smtp_port;
+
+            $mail->setFrom($this->from_email, $this->from_name);
+            $mail->addAddress($toEmail, $toName);
+
+            $mail->isHTML(true);
+            $mail->Subject = $subject;
+            $mail->Body = $body;
+
+            $mail->send();
+            return true;
+            
+        } catch (Exception $e) {
+            error_log("Email sending failed: " . $e->getMessage());
+            return false;
+        }
+    }
 }

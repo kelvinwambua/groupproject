@@ -69,7 +69,7 @@ export default function HomePage() {
 		const userId = localStorage.getItem('userId');
 
 		if (!token || !userId) {
-			console.error("Authentication required. Please log in to add items to the cart.");
+			alert("Authentication required. Please log in to add items to the cart.");
 			return;
 		}
 

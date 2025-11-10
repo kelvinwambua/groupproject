@@ -658,3 +658,22 @@ $app->delete('/api/users/{id}/cart/{cart_item_id}', function (Request $request, 
     $response->getBody()->write(json_encode(['message' => 'Item successfully removed from cart.', 'cart' => $updatedCart]));
     return $response->withStatus(200)->withHeader('Content-Type', 'application/json');
 });
+$app->post('/api/users/send-email', function (Request $request, Response $response) {
+    $data = json_decode($request->getBody(), true);
+
+    if (empty($data['to']) || empty($data['subject']) || empty($data['body'])) {
+        $response->getBody()->write(json_encode(['error' => 'To, subject, and body are required.']));
+        return $response->withStatus(400)->withHeader('Content-Type', 'application/json');
+    }
+
+    $emailService = new \App\Services\EmailService();
+    $success = $emailService->sendEmail($data['to'], $data['name'], $data['subject'], $data['body']);
+
+    if ($success) {
+        $response->getBody()->write(json_encode(['message' => 'Email sent successfully.']));
+        return $response->withStatus(200)->withHeader('Content-Type', 'application/json');
+    } else {
+        $response->getBody()->write(json_encode(['error' => 'Failed to send email.']));
+        return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+    }
+});
