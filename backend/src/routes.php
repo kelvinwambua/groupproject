@@ -421,13 +421,24 @@ $app->delete('/api/users/{id}', function (Request $request, Response $response, 
 });
 $app->get('/api/products', function (Request $request, Response $response) {
     $query = Product::query();
-      
-    if ($categoryname = $request->getQueryParams()['category_name'] ?? null) {
-        $query->where('category_name', $categoryname);
-    }
-  
-    $products = $query->with(['category', 'creator'])->get();
+
+    $params = $request->getQueryParams();
     
+    if (!empty($params['category_id'])) {
+        $categoryId = intval($params['category_id']);
+        if ($categoryId > 0) {
+            $query->where('category_id', $categoryId);
+        }
+    } elseif (!empty($params['category_name'])) {
+        
+        $categoryName = $params['category_name'];
+        $query->whereHas('category', function ($q) use ($categoryName) {
+            $q->where('name', $categoryName);
+        });
+    }
+
+    $products = $query->with(['category', 'creator'])->get();
+
     $response->getBody()->write(json_encode($products));
     return $response->withHeader('Content-Type', 'application/json');
 });

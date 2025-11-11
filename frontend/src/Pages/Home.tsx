@@ -21,20 +21,19 @@ export default function HomePage() {
 	const [users, setUsers] = useState<any>({});
 	const [loading, setLoading] = useState(true);
 	const [categories, setCategories] = useState<any>({});
-	const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+	const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
 	const [categoryList, setCategoryList] = useState<any[]>([]);
 	const [searchTerm, setSearchTerm] = useState('');
 
+	
 	useEffect(() => {
-		const fetchData = async () => {
+		const fetchMeta = async () => {
 			try {
-				const [productsRes, usersRes, categoriesRes] = await Promise.all([
-					fetch('http://localhost:8000/api/products'),
+				const [usersRes, categoriesRes] = await Promise.all([
 					fetch('http://localhost:8000/api/users'),
 					fetch('http://localhost:8000/api/categories')
 				]);
 
-				const productsData = await productsRes.json();
 				const usersData = await usersRes.json();
 				const categoriesData = await categoriesRes.json();
 
@@ -48,20 +47,36 @@ export default function HomePage() {
 					return acc;
 				}, {});
 
-				setProducts(productsData);
 				setUsers(usersMap);
 				setCategories(categoriesMap);
 				setCategoryList(categoriesData);
-
 			} catch (error) {
-				console.error('Error fetching data:', error);
-			} finally {
-				setLoading(false);
+				console.error('Error fetching meta data:', error);
 			}
 		};
 
-		fetchData();
+		fetchMeta();
 	}, []);
+
+
+	const fetchProducts = async (categoryId: number | null = null) => {
+		setLoading(true);
+		try {
+			const q = categoryId ? `?category_id=${encodeURIComponent(String(categoryId))}` : '';
+			const productsRes = await fetch(`http://localhost:8000/api/products${q}`);
+			const productsData = await productsRes.json();
+			setProducts(productsData || []);
+		} catch (error) {
+			console.error('Error fetching products:', error);
+			setProducts([]);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	useEffect(() => {
+		fetchProducts(selectedCategory);
+	}, [selectedCategory]);
 
 
 	const handleAddToCart = async (productId: string) => {
@@ -106,23 +121,17 @@ export default function HomePage() {
 		let currentProducts = products;
 		const normalizedSearch = searchTerm.toLowerCase().trim();
 
-		if (selectedCategory) {
-			currentProducts = currentProducts.filter(product =>
-				product.category_id === String(selectedCategory)
-			);
-		}
-
 		if (normalizedSearch) {
 			currentProducts = currentProducts.filter(product =>
-				product.name.toLowerCase().includes(normalizedSearch) ||
-				product.description.toLowerCase().includes(normalizedSearch)
+				String(product.name || '').toLowerCase().includes(normalizedSearch) ||
+				String(product.description || '').toLowerCase().includes(normalizedSearch)
 			);
 		}
 
 		return currentProducts;
-	}, [products, selectedCategory, searchTerm]);
+	}, [products, searchTerm]);
 
-	const handleCategorySelect = (categoryId: string | null) => {
+	const handleCategorySelect = (categoryId: number | null) => {
 		setSelectedCategory(categoryId === selectedCategory ? null : categoryId);
 	};
 
