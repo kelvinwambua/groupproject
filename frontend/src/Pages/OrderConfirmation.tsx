@@ -102,29 +102,41 @@ export default function OrderConfirmation() {
                 <div className="mb-4">
                   <h4 className="font-medium">Delivery Address</h4>
                   <div className="text-sm text-muted-foreground">
-                    {typeof order.shipping_address === 'string' ? (() => {
+                    {(() => {
                       try {
-                        const s = JSON.parse(order.shipping_address);
-                        return (
-                          <div>
-                            <div>{s.recipient_name}</div>
-                            <div>{s.line1}{s.line2 ? `, ${s.line2}` : ''}</div>
-                            <div>{s.city}{s.state ? `, ${s.state}` : ''} {s.postal_code}</div>
-                            <div>{s.country}</div>
-                            {s.phone && <div>{s.phone}</div>}
-                          </div>
-                        );
+                        const addr = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address;
+                        if (addr && typeof addr === 'object') {
+                          return (
+                            <div>
+                              {addr.recipient_name && <div>{addr.recipient_name}</div>}
+                              {(addr.line1 || addr.line2) && <div>{addr.line1}{addr.line2 ? `, ${addr.line2}` : ''}</div>}
+                              {(addr.city || addr.state || addr.postal_code) && <div>{addr.city}{addr.state ? `, ${addr.state}` : ''}{addr.postal_code ? ` ${addr.postal_code}` : ''}</div>}
+                              {addr.country && <div>{addr.country}</div>}
+                              {addr.phone && <div>{addr.phone}</div>}
+                            </div>
+                          );
+                        }
+                        
+                        return <div>{String(order.shipping_address)}</div>;
                       } catch (e) {
-                        return <div>{order.shipping_address}</div>;
+                        return <div>{String(order.shipping_address)}</div>;
                       }
-                    })() : (
-                      <div>{JSON.stringify(order.shipping_address)}</div>
-                    )}
+                    })()}
                   </div>
                 </div>
               )}
 
-              <Button onClick={() => navigate('/')}>Continue Shopping</Button>
+              <Button onClick={async () => {
+                try {
+                  if (order && order.id) {
+                    await fetch(`http://localhost:8000/api/orders/${order.id}/send-confirmation`, { method: 'POST' });
+                  }
+                } catch (e) {
+                  console.error('Failed to send confirmation email', e);
+                } finally {
+                  navigate('/');
+                }
+              }}>Continue Shopping</Button>
             </div>
           ) : (
             <div>

@@ -841,6 +841,118 @@ $app->get('/api/orders/{id}', function (Request $request, Response $response, $a
     $response->getBody()->write(json_encode($order));
     return $response->withHeader('Content-Type', 'application/json');
 });
+
+$app->post('/api/orders/{id}/send-confirmation', function (Request $request, Response $response, $args) {
+    $orderId = $args['id'];
+
+    try {
+        $order = Capsule::table('orders')->where('id', $orderId)->first();
+        if (!$order) {
+            $response->getBody()->write(json_encode(['error' => 'Order not found']));
+            return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+        }
+
+        $user = User::find($order->user_id);
+        if (!$user) {
+            $response->getBody()->write(json_encode(['error' => 'User not found for order']));
+            return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+        }
+
+        $items = Capsule::table('order_items')
+                    ->where('order_id', $orderId)
+                    ->join('products', 'order_items.product_id', '=', 'products.id')
+                    ->select('order_items.*', 'products.name as product_name')
+                    ->get();
+
+        
+        $body = "<h2>Order Confirmation</h2>";
+        $body .= "<p>Hi " . htmlspecialchars($user->name ?? $user->email) . ",</p>";
+        $body .= "<p>Thank you for your order. Here are the details:</p>";
+        $body .= "<h3>Items</h3><ul>";
+        $subtotal = 0.0;
+        foreach ($items as $it) {
+            $line = floatval($it->price) * intval($it->quantity);
+            $subtotal += $line;
+            $body .= "<li>" . htmlspecialchars($it->product_name) . " — Qty: " . intval($it->quantity) . " — Unit: " . number_format(floatval($it->price),2) . " — Line: " . number_format($line,2) . "</li>";
+        }
+        $body .= "</ul>";
+
+        $body .= "<h3>Shipping</h3>";
+        $body .= "<p>Method: " . htmlspecialchars($order->shipping_method ?? '—') . "</p>";
+        $body .= "<p>Cost: " . number_format(floatval($order->shipping_cost ?? 0),2) . "</p>";
+
+        
+        $formattedAddress = '';
+        if ($order->shipping_address) {
+            $addr = null;
+            if (is_string($order->shipping_address)) {
+                $decoded = json_decode($order->shipping_address, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $addr = $decoded;
+                } else {
+                    
+                    $formattedAddress = nl2br(htmlspecialchars($order->shipping_address));
+                }
+            } elseif (is_array($order->shipping_address) || is_object($order->shipping_address)) {
+                $addr = (array)$order->shipping_address;
+            }
+
+            if ($addr && is_array($addr)) {
+                $lines = [];
+                if (!empty($addr['recipient_name'])) $lines[] = htmlspecialchars($addr['recipient_name']);
+                $lineParts = [];
+                if (!empty($addr['line1'])) $lineParts[] = htmlspecialchars($addr['line1']);
+                if (!empty($addr['line2'])) $lineParts[] = htmlspecialchars($addr['line2']);
+                if (!empty($lineParts)) $lines[] = implode(', ', $lineParts);
+                $cityLine = '';
+                if (!empty($addr['city'])) $cityLine .= htmlspecialchars($addr['city']);
+                if (!empty($addr['state'])) $cityLine .= ($cityLine ? ', ' : '') . htmlspecialchars($addr['state']);
+                if (!empty($addr['postal_code'])) $cityLine .= ($cityLine ? ' ' : '') . htmlspecialchars($addr['postal_code']);
+                if ($cityLine) $lines[] = $cityLine;
+                if (!empty($addr['country'])) $lines[] = htmlspecialchars($addr['country']);
+                if (!empty($addr['phone'])) $lines[] = 'Phone: ' . htmlspecialchars($addr['phone']);
+
+                $formattedAddress = implode("<br/>", $lines);
+            }
+        }
+
+        $body .= "<p>Delivery address:<br/>" . ($formattedAddress ?: '—') . "</p>";
+
+        $total = floatval($order->total) + floatval($order->shipping_cost ?? 0);
+        $body .= "<h3>Order total: " . number_format($total,2) . "</h3>";
+
+        
+        $eta_days = $order->eta_days ?? null;
+        if (!$eta_days) {
+            $method = strtolower((string)($order->shipping_method ?? ''));
+            if (strpos($method, 'local') !== false) $eta_days = 1;
+            elseif (strpos($method, 'national') !== false) $eta_days = 3;
+            else $eta_days = 7;
+        }
+        $est = new DateTime();
+        $est->modify("+{$eta_days} days");
+        $body .= "<p>Estimated delivery date: " . $est->format('Y-m-d') . "</p>";
+        $body .= "<p>Pay on Delivery </p>";
+
+        $body .= "<p>Regards,<br/>Your Shop</p>";
+
+        $emailService = new \App\Services\EmailService();
+        $sent = $emailService->sendEmail($user->email, $user->name ?? $user->email, "Order Confirmation #{$orderId}", $body);
+
+        if ($sent) {
+            $response->getBody()->write(json_encode(['message' => 'Confirmation email sent']));
+            return $response->withHeader('Content-Type', 'application/json');
+        } else {
+            $response->getBody()->write(json_encode(['error' => 'Failed to send email']));
+            return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+        }
+
+    } catch (\Exception $e) {
+        error_log('Send confirmation email error: ' . $e->getMessage());
+        $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
+        return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+    }
+});
 $app->post('/api/users/send-email', function (Request $request, Response $response) {
     $data = json_decode($request->getBody(), true);
 
